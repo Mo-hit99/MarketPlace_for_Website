@@ -49,7 +49,7 @@ A production-grade SaaS marketplace where developers can upload web applications
 
 1. **Clone the repository:**
 ```bash
-git clone [<repository-url>](https://github.com/Mo-hit99/MarketPlace_for_Website.git)
+git clone https://github.com/Mo-hit99/MarketPlace_for_Website.git
 cd saas-marketplace-platform
 ```
 
