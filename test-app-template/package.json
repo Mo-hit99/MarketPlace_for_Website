@@ -1,0 +1,17 @@
+{
+  "name": "test-saas-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A simple test SaaS application",
+  "main": "index.html",
+  "scripts": {
+    "build": "echo 'Static build complete - files ready for deployment'",
+    "start": "echo 'Static site - serve index.html'",
+    "dev": "echo 'Development mode - serve index.html'"
+  },
+  "keywords": ["saas", "test", "static", "html"],
+  "author": "SaaS Marketplace",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}

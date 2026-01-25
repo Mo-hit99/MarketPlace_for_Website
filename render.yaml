@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: saas-marketplace-backend
+    env: python
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+
+  - type: web
+    name: saas-marketplace-frontend
+    env: node
+    buildCommand: "cd frontend && npm install && npm run build"
+    startCommand: "cd frontend && npm run preview"
+    staticPublishPath: "./frontend/dist"
+
+databases:
+  - name: marketplace-db
+    databaseName: marketplace_db
+    user: marketplace_user
