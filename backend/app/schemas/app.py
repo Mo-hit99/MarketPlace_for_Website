@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 from app.models.app import AppStatus, FrameworkType, DeploymentProvider, AppCategory
 
@@ -8,6 +8,11 @@ class AppBase(BaseModel):
     description: Optional[str] = None
     category: Optional[AppCategory] = AppCategory.OTHER
     price: Optional[float] = 9.99
+    tags: Optional[List[str]] = None
+    features: Optional[List[str]] = None
+    demo_url: Optional[str] = None
+    support_email: Optional[str] = None
+    website_url: Optional[str] = None
 
 class AppCreate(AppBase):
     pass
@@ -17,6 +22,11 @@ class AppUpdate(BaseModel):
     description: Optional[str] = None
     category: Optional[AppCategory] = None
     price: Optional[float] = None
+    tags: Optional[List[str]] = None
+    features: Optional[List[str]] = None
+    demo_url: Optional[str] = None
+    support_email: Optional[str] = None
+    website_url: Optional[str] = None
 
 class AppStepUpdate(BaseModel):
     step_completed: int
@@ -31,6 +41,8 @@ class AppInDBBase(AppBase):
     production_url: Optional[str] = None
     step_completed: int
     created_at: datetime
+    images: Optional[List[str]] = None
+    logo_url: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Enum, ForeignKey, DateTime, Float, Text
+from sqlalchemy import Column, Integer, String, Enum, ForeignKey, DateTime, Float, Text, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -51,5 +51,14 @@ class App(Base):
     
     # Multi-step creation tracking
     step_completed = Column(Integer, default=0)  # 0=info, 1=pricing, 2=upload, 3=deploy
+    
+    # Image and metadata fields
+    images = Column(JSON, nullable=True)  # Array of image URLs/paths
+    logo_url = Column(String, nullable=True)  # Main app logo
+    tags = Column(JSON, nullable=True)  # Array of tags
+    features = Column(JSON, nullable=True)  # Array of key features
+    demo_url = Column(String, nullable=True)  # Demo/preview URL
+    support_email = Column(String, nullable=True)
+    website_url = Column(String, nullable=True)
     
     developer = relationship("User", backref="apps")

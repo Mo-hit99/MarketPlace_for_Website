@@ -63,6 +63,7 @@ async def deploy_app(
     
     app.deployment_provider = provider
     app.status = models.AppStatus.DEPLOYING
+    app.step_completed = max(app.step_completed, 4)  # Mark step 4 (deployment) as started
     db.commit()
     
     # Start background deployment process

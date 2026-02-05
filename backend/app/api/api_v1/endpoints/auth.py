@@ -157,12 +157,3 @@ def verify_deployment_service_payment(
     db.commit()
     
     return {"status": "success", "message": "Deployment service access granted"}
-
-@router.get("/me", response_model=user_schemas.User)
-def read_users_me(
-    current_user: models.User = Depends(deps.get_current_active_user),
-) -> Any:
-    """
-    Get current user.
-    """
-    return current_user
