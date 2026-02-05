@@ -203,6 +203,7 @@ VITE_API_BASE_URL=http://localhost:8000
 7. **psycopg2 Issues**: Switched to psycopg3 for better Python 3.13 support
 8. **pkg_resources Missing**: Added setuptools for Python 3.13 compatibility
 9. **Vercel Environment Variables**: Set VITE_API_BASE_URL in Vercel dashboard, not as secrets
+10. **TypeScript Build Errors**: Added vite-env.d.ts for proper import.meta.env typing
 
 ### Useful Commands
 
