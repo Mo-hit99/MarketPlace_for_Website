@@ -55,6 +55,7 @@ In your Render service settings, add these environment variables:
 
 ```bash
 # Database (use Internal Database URL from Step 1)
+# Note: The app automatically converts postgresql:// to postgresql+psycopg:// for psycopg3 compatibility
 DATABASE_URL=postgresql://username:password@hostname:port/database_name
 
 # Security (generate a strong secret key)
@@ -196,7 +197,8 @@ VITE_API_BASE_URL=http://localhost:8000
 3. **Build Failures**: Verify Node.js/Python versions
 4. **Environment Variables**: Ensure all required vars are set
 5. **Pillow/PIL Issues**: Use Python 3.11.9 (specified in runtime.txt)
-6. **Package Compatibility**: Updated requirements.txt for Python 3.11 compatibility
+6. **Package Compatibility**: Updated requirements.txt for Python 3.11+ compatibility
+7. **psycopg2 Issues**: Switched to psycopg3 for better Python 3.13 support
 
 ### Useful Commands
 

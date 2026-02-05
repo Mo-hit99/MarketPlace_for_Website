@@ -4,6 +4,10 @@ from app.core.config import settings
 
 DATABASE_URL = settings.DATABASE_URL
 
+# For psycopg3, ensure the URL uses the correct driver
+if DATABASE_URL and DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
+
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
