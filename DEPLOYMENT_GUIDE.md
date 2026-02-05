@@ -63,6 +63,9 @@ SECRET_KEY=your_super_secret_key_change_this_in_production
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 
+# CORS - Add your frontend domain (IMPORTANT!)
+ADDITIONAL_CORS_ORIGINS=https://your-frontend-domain.vercel.app
+
 # Payment Gateway (Razorpay)
 RAZORPAY_KEY_ID=your_razorpay_key_id
 RAZORPAY_KEY_SECRET=your_razorpay_key_secret
@@ -71,6 +74,8 @@ RAZORPAY_KEY_SECRET=your_razorpay_key_secret
 VERCEL_TOKEN=your_vercel_token
 RENDER_API_KEY=your_render_api_key
 ```
+
+**Important**: Replace `your-frontend-domain.vercel.app` with your actual Vercel domain to fix CORS errors.
 
 ### Step 4: Database Migration
 
@@ -205,6 +210,7 @@ VITE_API_BASE_URL=http://localhost:8000
 9. **Vercel Environment Variables**: Set VITE_API_BASE_URL in Vercel dashboard, not as secrets
 10. **TypeScript Build Errors**: Added vite-env.d.ts for proper import.meta.env typing
 11. **MIME Type Errors**: Fixed vercel.json routing for SPA (Single Page Application) support
+12. **CORS Errors**: Added frontend domain to BACKEND_CORS_ORIGINS in backend config
 
 ### Useful Commands
 
@@ -229,6 +235,19 @@ alembic upgrade head
 - Static assets aren't being served correctly
 
 **Solution**: The `frontend/vercel.json` uses `rewrites` instead of `routes` to properly handle SPA routing while preserving static asset serving.
+
+### CORS (Cross-Origin Resource Sharing) Errors
+
+**Error**: "Access to XMLHttpRequest blocked by CORS policy"
+
+**Cause**: Backend doesn't allow requests from your frontend domain
+
+**Solutions**:
+1. **Code Fix**: Added your Vercel domain to `BACKEND_CORS_ORIGINS` in `backend/app/core/config.py`
+2. **Environment Variable**: Set `ADDITIONAL_CORS_ORIGINS=https://your-domain.vercel.app` in Render
+3. **Multiple Domains**: Use comma-separated values: `domain1.com,domain2.com`
+
+**Verification**: Check browser Network tab - successful requests should have CORS headers in response.
 
 ## Security Considerations
 

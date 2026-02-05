@@ -1,19 +1,23 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
+from typing import Optional, List
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "SaaS Marketplace Platform"
     API_V1_STR: str = "/api/v1"
     
     # CORS
-    BACKEND_CORS_ORIGINS: list = [
+    BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000", 
         "http://localhost:5173", 
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
         "http://localhost:8080",
-        "http://127.0.0.1:8080"
+        "http://127.0.0.1:8080",
+        "https://market-place-for-website.vercel.app"
     ]
+    
+    # Additional CORS origins from environment (comma-separated)
+    ADDITIONAL_CORS_ORIGINS: Optional[str] = None
     
     # DATABASE
     POSTGRES_USER: str = "postgres"
@@ -43,5 +47,10 @@ class Settings(BaseSettings):
         super().__init__(**kwargs)
         if not self.DATABASE_URL:
             self.DATABASE_URL = f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        
+        # Add additional CORS origins from environment variable
+        if self.ADDITIONAL_CORS_ORIGINS:
+            additional_origins = [origin.strip() for origin in self.ADDITIONAL_CORS_ORIGINS.split(",")]
+            self.BACKEND_CORS_ORIGINS.extend(additional_origins)
 
 settings = Settings()
