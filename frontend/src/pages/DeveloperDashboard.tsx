@@ -4,17 +4,24 @@ import { App, AppStatus } from '../types';
 import { Navbar } from '../components/Navbar';
 import { DeploymentTerminal } from '../components/DeploymentTerminal';
 import { MultiStepAppForm } from '../components/MultiStepAppForm';
+import { ImageUpload } from '../components/ImageUpload';
 import { useDeployment } from '../hooks/useDeployment';
-import { Plus, Upload, RefreshCw, Code, Rocket, Eye, X, Edit, Trash2, DollarSign } from 'lucide-react';
+import { VerificationNotice } from '../components/VerificationNotice';
+import { AutoRefreshNotice } from '../components/AutoRefreshNotice';
+import { Plus, Upload, RefreshCw, Code, Rocket, Eye, X, Edit, Trash2, DollarSign, Image as ImageIcon } from 'lucide-react';
+import { getImageUrl, getLogoUrl, getPlaceholderImageUrl } from '../utils/imageUtils';
 
 export const DeveloperDashboard = () => {
   const [apps, setApps] = useState<App[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isMultiStepFormOpen, setIsMultiStepFormOpen] = useState(false);
   const [editingApp, setEditingApp] = useState<App | null>(null);
+  const [editingAppImages, setEditingAppImages] = useState<App | null>(null);
   const [loading, setLoading] = useState(true);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [currentDeployingApp, setCurrentDeployingApp] = useState<App | null>(null);
+  const [showAutoRefresh, setShowAutoRefresh] = useState(false);
   
   const deployment = useDeployment();
   
@@ -32,6 +39,19 @@ export const DeveloperDashboard = () => {
 
   useEffect(() => {
     fetchApps();
+    
+    // Listen for deployment completion events
+    const handleDeploymentCompleted = () => {
+      setTimeout(() => {
+        setShowAutoRefresh(true);
+      }, 2000); // Show auto-refresh notice 2 seconds after completion
+    };
+    
+    window.addEventListener('deploymentCompleted', handleDeploymentCompleted);
+    
+    return () => {
+      window.removeEventListener('deploymentCompleted', handleDeploymentCompleted);
+    };
   }, []);
 
   const handleCreateApp = () => {
@@ -52,6 +72,11 @@ export const DeveloperDashboard = () => {
   const handleEditApp = (app: App) => {
     setEditingApp(app);
     setIsModalOpen(true);
+  };
+
+  const handleEditImages = (app: App) => {
+    setEditingAppImages(app);
+    setIsImageModalOpen(true);
   };
 
   const handleUpdateApp = async (e: React.FormEvent) => {
@@ -103,14 +128,19 @@ export const DeveloperDashboard = () => {
   
   const handleDeploy = async (app: App) => {
     setCurrentDeployingApp(app);
-    setIsTerminalOpen(true);
+    setIsTerminalOpen(true); // Show terminal immediately
+    
+    // Fetch existing logs first
+    await deployment.fetchExistingLogs(app.id);
     
     try {
       await deployment.deployApp(app.id, app.name);
+      
       // Refresh apps list after deployment
       setTimeout(() => {
         fetchApps();
       }, 2000);
+      
     } catch (error) {
       console.error('Deployment error:', error);
     }
@@ -118,14 +148,21 @@ export const DeveloperDashboard = () => {
 
   const handleRedeploy = async (app: App) => {
     setCurrentDeployingApp(app);
-    setIsTerminalOpen(true);
+    setIsTerminalOpen(true); // Show terminal immediately
+    
+    // Fetch existing logs first
+    await deployment.fetchExistingLogs(app.id);
     
     try {
       await api.post(`/deployments/${app.id}/redeploy`);
+      // Start polling for logs
+      deployment.deployApp(app.id, app.name);
+      
       // Refresh apps list after redeployment
       setTimeout(() => {
         fetchApps();
       }, 2000);
+      
     } catch (error) {
       console.error('Redeployment error:', error);
     }
@@ -153,18 +190,63 @@ export const DeveloperDashboard = () => {
   };
 
   const getStepStatus = (app: App) => {
-    return `${app.step_completed}/4 steps completed`;
+    const totalSteps = 4;
+    const completedSteps = Math.min(app.step_completed || 0, totalSteps);
+    return {
+      completed: completedSteps,
+      total: totalSteps,
+      percentage: Math.round((completedSteps / totalSteps) * 100),
+      text: `${completedSteps}/${totalSteps} steps completed`
+    };
   };
 
   const canDeploy = (app: App) => {
-    return app.step_completed >= 3 && app.source_path && app.status !== AppStatus.DEPLOYING;
+    // Can deploy if all steps are completed (step 4) and has source code and not currently deploying
+    return app.step_completed >= 4 && app.source_path && app.status !== AppStatus.DEPLOYING;
   };
 
   const AppCard = ({ app }: { app: App }) => (
-    <div className="card group">
+    <div className={`card group relative ${app.status === AppStatus.DEPLOYING ? 'opacity-75' : ''}`}>
+      {/* Deployment Loading Overlay */}
+      {app.status === AppStatus.DEPLOYING && (
+        <div className="absolute inset-0 bg-white bg-opacity-90 rounded-lg flex items-center justify-center z-10">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <p className="text-sm font-medium text-blue-600">Deploying...</p>
+            <p className="text-xs text-gray-500">This may take a few minutes</p>
+          </div>
+        </div>
+      )}
+      
+      {/* App Image */}
+      {app.images && app.images.length > 0 && (
+        <div className="mb-4">
+          <img
+            src={getImageUrl(app.id, app.images[0])}
+            alt={app.name}
+            className="w-full h-32 object-cover rounded-lg"
+            onError={(e) => {
+              console.error('App image failed to load:', app.images?.[0]);
+              e.currentTarget.src = getPlaceholderImageUrl(400, 128);
+            }}
+          />
+        </div>
+      )}
+      
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
           <div className="flex items-center space-x-2 mb-2">
+            {app.logo_url && (
+              <img
+                src={getLogoUrl(app.id, app.logo_url)}
+                alt={`${app.name} logo`}
+                className="w-6 h-6 rounded object-cover"
+                onError={(e) => {
+                  console.error('App logo failed to load:', app.logo_url);
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            )}
             <h3 className="text-lg font-semibold text-gray-900">{app.name}</h3>
             <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(app.status)}`}>
               {app.status}
@@ -174,14 +256,21 @@ export const DeveloperDashboard = () => {
           <div className="flex items-center space-x-4 text-sm text-gray-500">
             <span className="flex items-center">
               <DollarSign className="h-4 w-4 mr-1" />
-              ${app.price}/month
+              ₹{app.price}/month
             </span>
-            <span>{getStepStatus(app)}</span>
+            <span>{getStepStatus(app).text}</span>
             <span>Framework: {app.framework}</span>
           </div>
         </div>
         
         <div className="flex items-center space-x-2">
+          <button
+            onClick={() => handleEditImages(app)}
+            className="p-2 text-gray-400 hover:text-green-600 transition-colors"
+            title="Edit images"
+          >
+            <ImageIcon className="h-4 w-4" />
+          </button>
           <button
             onClick={() => handleEditApp(app)}
             className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
@@ -201,24 +290,45 @@ export const DeveloperDashboard = () => {
 
       {/* Progress Bar */}
       <div className="mb-4">
-        <div className="flex justify-between text-xs text-gray-500 mb-1">
-          <span>Progress</span>
-          <span>{Math.round((app.step_completed / 4) * 100)}%</span>
+        <div className="flex justify-between text-xs text-gray-500 mb-2">
+          <span>Setup Progress</span>
+          <span>{getStepStatus(app).percentage}%</span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-gray-200 rounded-full h-2.5">
           <div 
-            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${(app.step_completed / 4) * 100}%` }}
+            className={`h-2.5 rounded-full transition-all duration-500 ${
+              app.status === AppStatus.FAILED ? 'bg-red-500' :
+              app.status === AppStatus.PUBLISHED ? 'bg-green-500' :
+              app.status === AppStatus.DEPLOYING ? 'bg-yellow-500 animate-pulse' :
+              'bg-blue-500'
+            }`}
+            style={{ width: `${getStepStatus(app).percentage}%` }}
           ></div>
+        </div>
+        
+        {/* Step indicators */}
+        <div className="flex justify-between mt-2 text-xs">
+          <span className={`${(app.step_completed || 0) >= 1 ? 'text-green-600' : 'text-gray-400'}`}>
+            Info
+          </span>
+          <span className={`${(app.step_completed || 0) >= 2 ? 'text-green-600' : 'text-gray-400'}`}>
+            Price
+          </span>
+          <span className={`${(app.step_completed || 0) >= 3 ? 'text-green-600' : 'text-gray-400'}`}>
+            Upload
+          </span>
+          <span className={`${(app.step_completed || 0) >= 4 ? 'text-green-600' : 'text-gray-400'}`}>
+            Deploy
+          </span>
         </div>
       </div>
 
       <div className="flex items-center justify-between">
         <div className="flex space-x-2">
-          {app.step_completed < 3 && (
+          {app.step_completed < 4 && (
             <label className="btn-secondary cursor-pointer">
               <Upload className="h-4 w-4 mr-2" />
-              Upload Code
+              {app.step_completed < 3 ? 'Upload Code' : 'Complete Setup'}
               <input
                 type="file"
                 accept=".zip"
@@ -322,6 +432,66 @@ export const DeveloperDashboard = () => {
         />
       )}
 
+      {/* Image Edit Modal */}
+      {isImageModalOpen && editingAppImages && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Edit Images - {editingAppImages.name}
+                </h3>
+                <button
+                  onClick={() => {
+                    setIsImageModalOpen(false);
+                    setEditingAppImages(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <ImageUpload
+                appId={editingAppImages.id}
+                images={editingAppImages.images || []}
+                logoUrl={editingAppImages.logo_url}
+                onImagesUpdate={(newImages) => {
+                  setEditingAppImages({ ...editingAppImages, images: newImages });
+                  // Update the app in the main list
+                  setApps(apps.map(app => 
+                    app.id === editingAppImages.id 
+                      ? { ...app, images: newImages }
+                      : app
+                  ));
+                }}
+                onLogoUpdate={(newLogoUrl) => {
+                  setEditingAppImages({ ...editingAppImages, logo_url: newLogoUrl });
+                  // Update the app in the main list
+                  setApps(apps.map(app => 
+                    app.id === editingAppImages.id 
+                      ? { ...app, logo_url: newLogoUrl }
+                      : app
+                  ));
+                }}
+              />
+              
+              <div className="flex justify-end pt-4 mt-6 border-t border-gray-200">
+                <button
+                  onClick={() => {
+                    setIsImageModalOpen(false);
+                    setEditingAppImages(null);
+                  }}
+                  className="btn-primary"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit App Modal */}
       {isModalOpen && editingApp && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -365,12 +535,12 @@ export const DeveloperDashboard = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Price (USD/month)
+                    Price (INR/month)
                   </label>
                   <input
                     type="number"
-                    step="0.01"
-                    min="0.99"
+                    step="1"
+                    min="99"
                     value={editingApp.price}
                     onChange={(e) => setEditingApp({ ...editingApp, price: parseFloat(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -407,6 +577,19 @@ export const DeveloperDashboard = () => {
           deploymentUrl={deployment.deploymentUrl}
         />
       )}
+
+      {/* Auto Refresh Notice */}
+      <AutoRefreshNotice
+        show={showAutoRefresh}
+        onCancel={() => setShowAutoRefresh(false)}
+      />
+
+      {/* Verification Notice */}
+      <VerificationNotice
+        show={deployment.deploymentPhase === 'verifying' && !!deployment.verificationPhase}
+        phase={deployment.verificationPhase || 'starting'}
+        appUrl={deployment.deploymentUrl}
+      />
     </div>
   );
 };

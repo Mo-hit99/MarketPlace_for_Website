@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { App, AppStatus } from '../types';
 import { Navbar } from '../components/Navbar';
-import { ShoppingCart, ExternalLink, Star, Users, Zap, Shield, Search, Filter } from 'lucide-react';
+import { ShoppingCart, ExternalLink, Star, Users, Zap, Shield, Search, Filter, Eye } from 'lucide-react';
+import { getImageUrl, getLogoUrl, getPlaceholderImageUrl } from '../utils/imageUtils';
 
 declare global {
   interface Window {
@@ -11,6 +13,7 @@ declare global {
 }
 
 export const UserMarketplace = () => {
+  const navigate = useNavigate();
   const [apps, setApps] = useState<App[]>([]);
   const [subscriptions, setSubscriptions] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -44,7 +47,7 @@ export const UserMarketplace = () => {
 
   const handleInstall = async (app: App) => {
     try {
-        const orderRes = await api.post('/subscriptions/orders', { app_id: app.id, amount: 999.00 });
+        const orderRes = await api.post('/subscriptions/orders', { app_id: app.id, amount: app.price * 100 });
         const { order_id, amount, currency, key_id } = orderRes.data;
 
         const options = {
@@ -115,21 +118,78 @@ export const UserMarketplace = () => {
     
     return (
       <div className="card group animate-fade-in">
+        {/* App Image */}
+        <div className="relative mb-4">
+          {app.images && app.images.length > 0 ? (
+            <img
+              src={getImageUrl(app.id, app.images[0])}
+              alt={app.name}
+              className="w-full h-48 object-cover rounded-lg"
+              onError={(e) => {
+                console.error('App image failed to load:', app.images?.[0]);
+                e.currentTarget.src = getPlaceholderImageUrl(400, 200);
+              }}
+            />
+          ) : (
+            <div className="w-full h-48 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+              <Zap className="h-12 w-12 text-white" />
+            </div>
+          )}
+          
+          {/* View Details Button */}
+          <button
+            onClick={() => navigate(`/app/${app.id}`)}
+            className="absolute top-2 right-2 bg-black bg-opacity-50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <Eye className="h-4 w-4" />
+          </button>
+        </div>
+
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
-              {app.name}
-            </h3>
+            <div className="flex items-center space-x-2 mb-2">
+              {app.logo_url && (
+                <img
+                  src={getLogoUrl(app.id, app.logo_url)}
+                  alt={`${app.name} logo`}
+                  className="w-8 h-8 rounded object-cover"
+                  onError={(e) => {
+                    console.error('App logo failed to load:', app.logo_url);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              )}
+              <h3 
+                className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-200 cursor-pointer"
+                onClick={() => navigate(`/app/${app.id}`)}
+              >
+                {app.name}
+              </h3>
+            </div>
             <p className="mt-2 text-gray-600 text-sm leading-relaxed">
               {app.description || 'No description available'}
             </p>
           </div>
-          <div className="ml-4 flex-shrink-0">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-              <Zap className="h-6 w-6 text-white" />
-            </div>
-          </div>
         </div>
+        
+        {/* Tags */}
+        {app.tags && app.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-4">
+            {app.tags.slice(0, 3).map((tag, index) => (
+              <span
+                key={index}
+                className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+              >
+                {tag}
+              </span>
+            ))}
+            {app.tags.length > 3 && (
+              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                +{app.tags.length - 3} more
+              </span>
+            )}
+          </div>
+        )}
         
         <div className="flex items-center space-x-4 mb-4 text-sm text-gray-500">
           <div className="flex items-center">
@@ -148,27 +208,37 @@ export const UserMarketplace = () => {
         
         <div className="flex items-center justify-between pt-4 border-t border-gray-100">
           <div className="flex flex-col">
-            <span className="text-2xl font-bold gradient-text">$9.99</span>
+            <span className="text-2xl font-bold gradient-text">₹{app.price}</span>
             <span className="text-xs text-gray-500">per month</span>
           </div>
           
-          {isInstalled ? (
-            <button 
-              onClick={() => handleOpenApp(app.id)}
-              className="btn-success"
+          <div className="flex space-x-2">
+            <button
+              onClick={() => navigate(`/app/${app.id}`)}
+              className="btn-secondary"
             >
-              <ExternalLink className="mr-2 h-4 w-4" /> 
-              Open App
+              <Eye className="mr-2 h-4 w-4" />
+              View Details
             </button>
-          ) : (
-            <button 
-              onClick={() => handleInstall(app)}
-              className="btn-primary"
-            >
-              <ShoppingCart className="mr-2 h-4 w-4" /> 
-              Install Now
-            </button>
-          )}
+            
+            {isInstalled ? (
+              <button 
+                onClick={() => handleOpenApp(app.id)}
+                className="btn-success"
+              >
+                <ExternalLink className="mr-2 h-4 w-4" /> 
+                Open App
+              </button>
+            ) : (
+              <button 
+                onClick={() => handleInstall(app)}
+                className="btn-primary"
+              >
+                <ShoppingCart className="mr-2 h-4 w-4" /> 
+                Install
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );

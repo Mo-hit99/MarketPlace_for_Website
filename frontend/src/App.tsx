@@ -6,6 +6,7 @@ import { Register } from './pages/Register';
 import { DeveloperDashboard } from './pages/DeveloperDashboard';
 import { UserMarketplace } from './pages/UserMarketplace';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { AppDetails } from './pages/AppDetails';
 
 const PrivateRoute = ({ children }: { children: JSX.Element }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -47,6 +48,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<PrivateRoute><DashboardRoute /></PrivateRoute>} />
           <Route path="/marketplace" element={<PrivateRoute><UserMarketplace /></PrivateRoute>} />
+          <Route path="/app/:id" element={<PrivateRoute><AppDetails /></PrivateRoute>} />
           <Route path="/admin" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
         </Routes>

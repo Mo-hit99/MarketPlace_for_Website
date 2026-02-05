@@ -75,7 +75,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
     setLoading(true);
     try {
       const response = await api.post('/auth/me/deployment-service/payment', {
-        amount: 99.00
+        amount: 8299.00
       });
 
       const { order_id, amount, currency, key_id } = response.data;
@@ -311,7 +311,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
               <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-lg border border-purple-200">
                 <h4 className="font-semibold text-purple-900 mb-2">One-time Payment Required</h4>
                 <p className="text-purple-700 mb-4">
-                  To deploy and publish apps on our platform, a one-time payment of $99 is required. 
+                  To deploy and publish apps on our platform, a one-time payment of ₹8,299 is required. 
                   This gives you lifetime access to our deployment services.
                 </p>
                 
@@ -336,7 +336,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
               </div>
 
               <div className="text-center">
-                <div className="text-3xl font-bold text-gray-900 mb-2">$99</div>
+                <div className="text-3xl font-bold text-gray-900 mb-2">₹8,299</div>
                 <div className="text-gray-600">One-time payment</div>
               </div>
 

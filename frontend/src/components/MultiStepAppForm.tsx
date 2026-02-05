@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
-import { ChevronRight, ChevronLeft, Upload, DollarSign, Info, Rocket, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronRight, ChevronLeft, Upload, DollarSign, Info, Rocket, Check, Image as ImageIcon } from 'lucide-react';
 import api from '../services/api';
 import { DeploymentTerminal } from './DeploymentTerminal';
+import { DeploymentProgress } from './DeploymentProgress';
+import { VerificationNotice } from './VerificationNotice';
+import { AutoRefreshNotice } from './AutoRefreshNotice';
+import { ImageUpload } from './ImageUpload';
 import { useDeployment } from '../hooks/useDeployment';
 
 interface AppFormData {
@@ -9,6 +13,11 @@ interface AppFormData {
   description: string;
   category: string;
   price: number;
+  tags: string[];
+  features: string[];
+  demo_url: string;
+  support_email: string;
+  website_url: string;
 }
 
 interface MultiStepAppFormProps {
@@ -24,20 +33,46 @@ export const MultiStepAppForm: React.FC<MultiStepAppFormProps> = ({ onComplete, 
     name: '',
     description: '',
     category: 'other',
-    price: 9.99
+    price: 799,
+    tags: [],
+    features: [],
+    demo_url: '',
+    support_email: '',
+    website_url: ''
   });
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [images, setImages] = useState<string[]>([]);
+  const [logoUrl, setLogoUrl] = useState<string>('');
+  const [currentTag, setCurrentTag] = useState('');
+  const [currentFeature, setCurrentFeature] = useState('');
   const [showTerminal, setShowTerminal] = useState(false);
   const [deploymentCompleted, setDeploymentCompleted] = useState(false);
+  const [showAutoRefresh, setShowAutoRefresh] = useState(false);
   
   // Use deployment hook for real-time logs
-  const { isDeploying, logs, deploymentUrl, deployApp, clearLogs } = useDeployment();
+  const { isDeploying, logs, deploymentUrl, deployApp, clearLogs, deploymentPhase, progress, error, verificationPhase } = useDeployment();
+  
+  // Listen for deployment completion
+  useEffect(() => {
+    const handleDeploymentCompleted = () => {
+      setTimeout(() => {
+        setShowAutoRefresh(true);
+      }, 2000); // Show auto-refresh notice 2 seconds after completion
+    };
+    
+    window.addEventListener('deploymentCompleted', handleDeploymentCompleted);
+    
+    return () => {
+      window.removeEventListener('deploymentCompleted', handleDeploymentCompleted);
+    };
+  }, []);
 
   const steps = [
     { number: 1, title: 'App Information', icon: Info },
     { number: 2, title: 'Set Price', icon: DollarSign },
-    { number: 3, title: 'Upload Code', icon: Upload },
-    { number: 4, title: 'Deploy', icon: Rocket }
+    { number: 3, title: 'Images & Details', icon: ImageIcon },
+    { number: 4, title: 'Upload Code', icon: Upload },
+    { number: 5, title: 'Deploy', icon: Rocket }
   ];
 
   const categories = [
@@ -65,13 +100,18 @@ export const MultiStepAppForm: React.FC<MultiStepAppFormProps> = ({ onComplete, 
         });
         setAppId(response.data.id);
       } else if (currentStep === 2 && appId) {
-        // Update pricing
+        // Update pricing and metadata
         await api.put(`/apps/${appId}/pricing`, {
           price: formData.price,
           category: formData.category,
-          description: formData.description
+          description: formData.description,
+          tags: formData.tags,
+          features: formData.features,
+          demo_url: formData.demo_url,
+          support_email: formData.support_email,
+          website_url: formData.website_url
         });
-      } else if (currentStep === 3 && appId && uploadedFile) {
+      } else if (currentStep === 4 && appId && uploadedFile) {
         // Upload file
         const formDataUpload = new FormData();
         formDataUpload.append('file', uploadedFile);
@@ -90,18 +130,20 @@ export const MultiStepAppForm: React.FC<MultiStepAppFormProps> = ({ onComplete, 
   const handleDeploy = async () => {
     if (!appId) return;
     
-    setLoading(true);
+    // Show terminal immediately when deployment starts
     setShowTerminal(true);
+    setLoading(true);
     clearLogs();
     
     try {
       await deployApp(appId, formData.name);
       setDeploymentCompleted(true);
       
-      // Wait a bit for final status, then complete
+      // Complete the form after deployment finishes
       setTimeout(() => {
         onComplete(appId);
       }, 2000);
+      
     } catch (error) {
       console.error('Deployment error:', error);
     } finally {
@@ -121,12 +163,39 @@ export const MultiStepAppForm: React.FC<MultiStepAppFormProps> = ({ onComplete, 
       case 1:
         return formData.name.trim() !== '' && formData.description.trim() !== '';
       case 2:
-        return formData.price > 0;
+        return formData.price >= 99;
       case 3:
+        return true; // Images and metadata are optional
+      case 4:
         return uploadedFile !== null;
+      case 5:
+        // Can only deploy if we have appId, uploaded file, and not currently deploying
+        return appId !== null && uploadedFile !== null && !isDeploying;
       default:
         return true;
     }
+  };
+
+  const addTag = () => {
+    if (currentTag.trim() && !formData.tags.includes(currentTag.trim())) {
+      setFormData({ ...formData, tags: [...formData.tags, currentTag.trim()] });
+      setCurrentTag('');
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setFormData({ ...formData, tags: formData.tags.filter(tag => tag !== tagToRemove) });
+  };
+
+  const addFeature = () => {
+    if (currentFeature.trim() && !formData.features.includes(currentFeature.trim())) {
+      setFormData({ ...formData, features: [...formData.features, currentFeature.trim()] });
+      setCurrentFeature('');
+    }
+  };
+
+  const removeFeature = (featureToRemove: string) => {
+    setFormData({ ...formData, features: formData.features.filter(feature => feature !== featureToRemove) });
   };
 
   return (
@@ -231,22 +300,22 @@ export const MultiStepAppForm: React.FC<MultiStepAppFormProps> = ({ onComplete, 
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Monthly Subscription Price (USD) *
+                  Monthly Subscription Price (INR) *
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2 text-gray-500">$</span>
+                  <span className="absolute left-3 top-2 text-gray-500">₹</span>
                   <input
                     type="number"
                     step="0.01"
-                    min="0.99"
+                    min="99"
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
                     className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="9.99"
+                    placeholder="799"
                   />
                 </div>
                 <p className="text-sm text-gray-500 mt-1">
-                  Recommended: $9.99/month. Users will pay this amount to access your app.
+                  Recommended: ₹799/month. Users will pay this amount to access your app.
                 </p>
               </div>
 
@@ -256,13 +325,153 @@ export const MultiStepAppForm: React.FC<MultiStepAppFormProps> = ({ onComplete, 
                   <li>• Research similar apps in your category</li>
                   <li>• Consider your app's value and features</li>
                   <li>• You can change the price later</li>
-                  <li>• Lower prices may attract more users initially</li>
+                  <li>• Lower prices (₹99-₹499) may attract more users initially</li>
                 </ul>
               </div>
             </div>
           )}
 
-          {currentStep === 3 && (
+          {currentStep === 3 && appId && (
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold text-gray-900">Images & App Details</h3>
+              
+              {/* Image Upload */}
+              <ImageUpload
+                appId={appId}
+                images={images}
+                logoUrl={logoUrl}
+                onImagesUpdate={setImages}
+                onLogoUpdate={setLogoUrl}
+              />
+
+              {/* Tags */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tags (Optional)
+                </label>
+                <div className="flex space-x-2 mb-2">
+                  <input
+                    type="text"
+                    value={currentTag}
+                    onChange={(e) => setCurrentTag(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Add a tag (e.g., productivity, automation)"
+                  />
+                  <button
+                    type="button"
+                    onClick={addTag}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Add
+                  </button>
+                </div>
+                {formData.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {formData.tags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                      >
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => removeTag(tag)}
+                          className="ml-2 text-blue-600 hover:text-blue-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Features */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Key Features (Optional)
+                </label>
+                <div className="flex space-x-2 mb-2">
+                  <input
+                    type="text"
+                    value={currentFeature}
+                    onChange={(e) => setCurrentFeature(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addFeature())}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Add a key feature"
+                  />
+                  <button
+                    type="button"
+                    onClick={addFeature}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Add
+                  </button>
+                </div>
+                {formData.features.length > 0 && (
+                  <ul className="space-y-1">
+                    {formData.features.map((feature, index) => (
+                      <li key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded">
+                        <span>{feature}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeFeature(feature)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          ×
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {/* Additional URLs */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Demo URL (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.demo_url}
+                    onChange={(e) => setFormData({ ...formData, demo_url: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="https://demo.yourapp.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Website URL (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.website_url}
+                    onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="https://yourapp.com"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Support Email (Optional)
+                </label>
+                <input
+                  type="email"
+                  value={formData.support_email}
+                  onChange={(e) => setFormData({ ...formData, support_email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="support@yourapp.com"
+                />
+              </div>
+            </div>
+          )}
+
+          {currentStep === 4 && (
             <div className="space-y-6">
               <h3 className="text-lg font-semibold text-gray-900">Upload Your App Code</h3>
               
@@ -304,7 +513,7 @@ export const MultiStepAppForm: React.FC<MultiStepAppFormProps> = ({ onComplete, 
             </div>
           )}
 
-          {currentStep === 4 && (
+          {currentStep === 5 && (
             <div className="space-y-6">
               <h3 className="text-lg font-semibold text-gray-900">Ready to Deploy</h3>
               
@@ -323,46 +532,14 @@ export const MultiStepAppForm: React.FC<MultiStepAppFormProps> = ({ onComplete, 
               )}
 
               {/* Real-time Deployment Status */}
-              {(isDeploying || deploymentCompleted) && (
-                <div className={`p-6 rounded-lg ${deploymentCompleted ? 'bg-green-50' : 'bg-blue-50'}`}>
-                  <div className="flex items-center">
-                    {deploymentCompleted ? (
-                      <Check className="h-8 w-8 text-green-500 mr-3" />
-                    ) : (
-                      <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mr-3"></div>
-                    )}
-                    <div>
-                      <h4 className={`font-medium ${deploymentCompleted ? 'text-green-900' : 'text-blue-900'}`}>
-                        {deploymentCompleted ? 'Deployment Complete!' : 'Deploying Your App...'}
-                      </h4>
-                      <p className={`mt-1 ${deploymentCompleted ? 'text-green-700' : 'text-blue-700'}`}>
-                        {deploymentCompleted 
-                          ? 'Your app has been successfully deployed and is now live!'
-                          : 'Please wait while we deploy your app to Vercel. This may take a few minutes.'
-                        }
-                      </p>
-                      {logs.length > 0 && (
-                        <p className="text-sm mt-2 text-gray-600">
-                          Latest: {logs[logs.length - 1]?.message}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {deploymentUrl && (
-                    <div className="mt-4 p-3 bg-white rounded border">
-                      <p className="text-sm font-medium text-gray-700 mb-1">Live URL:</p>
-                      <a 
-                        href={deploymentUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 underline break-all"
-                      >
-                        {deploymentUrl}
-                      </a>
-                    </div>
-                  )}
-                </div>
+              {(isDeploying || deploymentCompleted || deploymentPhase !== 'preparing') && (
+                <DeploymentProgress
+                  phase={deploymentCompleted ? 'completed' : deploymentPhase}
+                  progress={deploymentCompleted ? 100 : progress}
+                  isDeploying={isDeploying}
+                  deploymentUrl={deploymentUrl}
+                  error={error}
+                />
               )}
 
               <div className="space-y-4">
@@ -370,7 +547,7 @@ export const MultiStepAppForm: React.FC<MultiStepAppFormProps> = ({ onComplete, 
                 <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                   <p><span className="font-medium">Name:</span> {formData.name}</p>
                   <p><span className="font-medium">Category:</span> {categories.find(c => c.value === formData.category)?.label}</p>
-                  <p><span className="font-medium">Price:</span> ${formData.price}/month</p>
+                  <p><span className="font-medium">Price:</span> ₹{formData.price}/month</p>
                   <p><span className="font-medium">File:</span> {uploadedFile?.name}</p>
                 </div>
               </div>
@@ -410,7 +587,7 @@ export const MultiStepAppForm: React.FC<MultiStepAppFormProps> = ({ onComplete, 
               </button>
             )}
             
-            {currentStep < 4 ? (
+            {currentStep < 5 ? (
               <button
                 onClick={handleNext}
                 disabled={!canProceed() || loading}
@@ -422,7 +599,7 @@ export const MultiStepAppForm: React.FC<MultiStepAppFormProps> = ({ onComplete, 
             ) : (
               <button
                 onClick={handleDeploy}
-                disabled={loading || isDeploying}
+                disabled={!canProceed() || loading || isDeploying || deploymentCompleted}
                 className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isDeploying ? (
@@ -467,6 +644,19 @@ export const MultiStepAppForm: React.FC<MultiStepAppFormProps> = ({ onComplete, 
         logs={logs}
         isDeploying={isDeploying}
         deploymentUrl={deploymentUrl}
+      />
+
+      {/* Auto Refresh Notice */}
+      <AutoRefreshNotice
+        show={showAutoRefresh}
+        onCancel={() => setShowAutoRefresh(false)}
+      />
+
+      {/* Verification Notice */}
+      <VerificationNotice
+        show={deploymentPhase === 'verifying' && !!verificationPhase}
+        phase={verificationPhase || 'starting'}
+        appUrl={deploymentUrl}
       />
     </div>
   );

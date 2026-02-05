@@ -53,4 +53,11 @@ export interface App {
   production_url?: string;
   step_completed: number;
   created_at: string;
+  images?: string[];
+  logo_url?: string;
+  tags?: string[];
+  features?: string[];
+  demo_url?: string;
+  support_email?: string;
+  website_url?: string;
 }
