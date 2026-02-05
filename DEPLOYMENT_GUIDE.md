@@ -199,6 +199,7 @@ VITE_API_BASE_URL=http://localhost:8000
 5. **Pillow/PIL Issues**: Use Python 3.11.9 (specified in runtime.txt)
 6. **Package Compatibility**: Updated requirements.txt for Python 3.11+ compatibility
 7. **psycopg2 Issues**: Switched to psycopg3 for better Python 3.13 support
+8. **pkg_resources Missing**: Added setuptools for Python 3.13 compatibility
 
 ### Useful Commands
 
