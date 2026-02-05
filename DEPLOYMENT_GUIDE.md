@@ -110,11 +110,13 @@ VITE_API_BASE_URL=https://your-backend-service.onrender.com
 
 ### Step 3: Set Environment Variables
 
-In Vercel project settings → Environment Variables:
+In Vercel project settings → Environment Variables, add:
 
-```bash
-VITE_API_BASE_URL=https://your-backend-service.onrender.com
-```
+**Variable Name**: `VITE_API_BASE_URL`  
+**Value**: `https://your-backend-service.onrender.com`  
+**Environment**: All (Production, Preview, Development)
+
+**Important**: Replace `your-backend-service` with your actual Render service name.
 
 ### Step 4: Deploy
 
@@ -200,6 +202,7 @@ VITE_API_BASE_URL=http://localhost:8000
 6. **Package Compatibility**: Updated requirements.txt for Python 3.11+ compatibility
 7. **psycopg2 Issues**: Switched to psycopg3 for better Python 3.13 support
 8. **pkg_resources Missing**: Added setuptools for Python 3.13 compatibility
+9. **Vercel Environment Variables**: Set VITE_API_BASE_URL in Vercel dashboard, not as secrets
 
 ### Useful Commands
 
