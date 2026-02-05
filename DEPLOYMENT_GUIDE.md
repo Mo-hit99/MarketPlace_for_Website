@@ -34,13 +34,20 @@ This guide covers deploying the SaaS Marketplace application with the backend on
 3. Configure service:
    - **Name**: `saas-marketplace-backend`
    - **Environment**: `Python 3`
+   - **Runtime**: `Python 3.11.9` (important for compatibility)
    - **Region**: Same as database
    - **Branch**: `main` (or your deployment branch)
    - **Root Directory**: `backend` (since backend is in a subdirectory)
    - **Build Command**: `pip install -r requirements.txt`
    - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 
-**Note**: The `runtime.txt` file specifies Python 3.11.9 for compatibility with all dependencies.
+**Important**: Make sure to set the Python runtime to 3.11.9 in the service settings to avoid SQLAlchemy compatibility issues with Python 3.13.
+
+#### Manual Python Version Configuration (if needed):
+If Render still uses Python 3.13, manually set the Python version:
+1. Go to your service → Settings → Environment
+2. Add environment variable: `PYTHON_VERSION` = `3.11.9`
+3. Or in Advanced settings, set Runtime to `python-3.11.9`
 
 ### Step 3: Configure Environment Variables
 
