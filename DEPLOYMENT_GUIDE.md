@@ -204,6 +204,7 @@ VITE_API_BASE_URL=http://localhost:8000
 8. **pkg_resources Missing**: Added setuptools for Python 3.13 compatibility
 9. **Vercel Environment Variables**: Set VITE_API_BASE_URL in Vercel dashboard, not as secrets
 10. **TypeScript Build Errors**: Added vite-env.d.ts for proper import.meta.env typing
+11. **MIME Type Errors**: Fixed vercel.json routing for SPA (Single Page Application) support
 
 ### Useful Commands
 
@@ -217,6 +218,17 @@ vercel --prod
 # Database migration (from Render shell)
 alembic upgrade head
 ```
+
+### Common MIME Type Error
+
+**Error**: "Failed to load module script: Expected a JavaScript module but got text/html"
+
+**Cause**: This happens when:
+- Browser tries to load JS/CSS files but gets HTML (404 page) instead
+- Vercel routing isn't properly configured for Single Page Applications
+- Static assets aren't being served correctly
+
+**Solution**: The `frontend/vercel.json` uses `rewrites` instead of `routes` to properly handle SPA routing while preserving static asset serving.
 
 ## Security Considerations
 
